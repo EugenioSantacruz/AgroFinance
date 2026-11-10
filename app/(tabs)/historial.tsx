@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTheme } from '../../src/context/ThemeContext';
 import { BaseContainerTemplate } from '../../src/templates/BaseContainerTemplate';
 import {
   AmbitoSwitch,
@@ -37,7 +44,12 @@ export default function HistorialScreen() {
   } = usePrivacy();
   const [monedaFilter, setMonedaFilter] = useState<'ALL' | CurrencyCode>('ALL');
   const [tipoFilter, setTipoFilter] = useState<TipoFiltro>('ALL');
-  const [confirmAnularId, setConfirmAnularId] = useState<string | null>(null);
+  const { theme } = useTheme();
+  const [pendingAnular, setPendingAnular] = useState<string | null>(null);
+  const pendingRef = useRef<{
+    id: string;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
 
   const {
     data: movimientos,
@@ -52,7 +64,7 @@ export default function HistorialScreen() {
   );
 
   const filtered = (movimientos || []).filter((m) => {
-    if (m.anulado) return false;
+    if (m.anulado || m.id === pendingAnular) return false;
     const matchAmbito =
       activeAmbito === 'TODOS' || (m.ambito || 'NEGOCIO') === activeAmbito;
     const matchMoneda = monedaFilter === 'ALL' || m.moneda === monedaFilter;
@@ -70,13 +82,35 @@ export default function HistorialScreen() {
     return matchAmbito && matchMoneda && matchTipo;
   });
 
-  const handleAnular = async (movId: string) => {
-    if (confirmAnularId !== movId) {
-      setConfirmAnularId(movId);
-      return;
-    }
-    setConfirmAnularId(null);
-    await anularMutation.mutateAsync({ movimientoId: movId });
+  // Anular con "Deshacer": se aplica a los 6 s salvo que el usuario lo cancele.
+  const flushPending = () => {
+    const p = pendingRef.current;
+    if (!p) return;
+    clearTimeout(p.timer);
+    pendingRef.current = null;
+    setPendingAnular(null);
+    anularMutation.mutate({ movimientoId: p.id });
+  };
+
+  // Si el usuario sale de la pantalla, se aplica lo que había pedido anular.
+  useEffect(() => () => flushPending(), []);
+
+  const handleAnular = (movId: string) => {
+    flushPending();
+    const timer = setTimeout(() => {
+      pendingRef.current = null;
+      setPendingAnular(null);
+      anularMutation.mutate({ movimientoId: movId });
+    }, 6000);
+    pendingRef.current = { id: movId, timer };
+    setPendingAnular(movId);
+  };
+
+  const handleUndoAnular = () => {
+    const p = pendingRef.current;
+    if (p) clearTimeout(p.timer);
+    pendingRef.current = null;
+    setPendingAnular(null);
   };
 
   return (
@@ -188,6 +222,38 @@ export default function HistorialScreen() {
         />
       </View>
 
+      {pendingAnular ? (
+        <View
+          accessibilityLiveRegion="polite"
+          style={[
+            styles.undoBar,
+            { backgroundColor: theme.surface, borderColor: theme.borderStrong },
+          ]}
+        >
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 13,
+              fontWeight: '700',
+              color: theme.textPrimary,
+            }}
+          >
+            Movimiento anulado
+          </Text>
+          <TouchableOpacity
+            onPress={handleUndoAnular}
+            accessibilityRole="button"
+            accessibilityLabel="Deshacer anulación"
+          >
+            <Text
+              style={{ color: theme.primary, fontWeight: '800', fontSize: 13 }}
+            >
+              Deshacer
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <SectionHeader
         title={`Movimientos Registrados (${filtered.length})`}
       />
@@ -231,7 +297,6 @@ export default function HistorialScreen() {
             const contraparteMeta = m.contraparte ? ` · ${m.contraparte}` : '';
             const canAnnul =
               !m.referenciaId && (isIncome || isCashOutflow(m.tipo));
-            const isConfirming = confirmAnularId === m.id;
 
             return (
               <ListRow
@@ -256,13 +321,7 @@ export default function HistorialScreen() {
                   m.moneda === 'USD' ? 'PYG' : 'USD',
                   isPrivate
                 )}`}
-                actionLabel={
-                  canAnnul
-                    ? isConfirming
-                      ? '¿Confirmar?'
-                      : 'Anular'
-                    : undefined
-                }
+                actionLabel={canAnnul ? 'Anular' : undefined}
                 actionTone="danger"
                 onActionPress={canAnnul ? () => handleAnular(m.id) : undefined}
               />
@@ -275,6 +334,15 @@ export default function HistorialScreen() {
 }
 
 const styles = StyleSheet.create({
+  undoBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 12,
+  },
   filtersRow: {
     flexDirection: 'row',
     gap: 8,
