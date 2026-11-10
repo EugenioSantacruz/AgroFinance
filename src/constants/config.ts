@@ -13,6 +13,7 @@ export const APP_CONFIG = {
     DISPLAY_CURRENCY: '@agrofinance:display_currency',
     WEBAUTHN_CREDENTIAL_ID: '@agrofinance:webauthn_cred_id',
     PIN_ENABLED: '@agrofinance:pin_enabled',
+    REMEMBER_DEVICE_UNTIL: '@agrofinance:remember_device_until',
     LAST_ACCOUNT_ID: '@agrofinance:last_account_id',
     MOCK_STATE_CACHE: '@agrofinance:mock_state_v2',
   },

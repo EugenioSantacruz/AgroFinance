@@ -45,9 +45,9 @@ export const LIGHT_THEME: ThemeColors = {
   heroBorder: '#047857',
   textPrimary: '#0B1712',       // Carbon Forest (Contraste 17.4:1)
   textSecondary: '#334E43',     // Slate Pine
-  textMuted: '#5F7A6E',
+  textMuted: '#4B6559',         // Ajustado para contraste AA (>=4.5:1) sobre fondos claros
   textInverse: '#F8FAFC',
-  primary: '#059669',           // Emerald Action
+  primary: '#047857',           // Emerald Action (texto blanco encima cumple AA)
   primarySoft: '#D1FAE5',
   accentGold: '#B45309',        // Harvest Amber (Soja/Maíz/Alertas)
   accentGoldSoft: '#FEF3C7',

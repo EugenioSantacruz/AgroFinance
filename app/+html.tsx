@@ -23,7 +23,15 @@ export default function RootHtml({
         <meta name="apple-mobile-web-app-title" content="AgroFinance" />
         <meta name="theme-color" content="#064E3B" />
         <title>AgroFinance PY · Bimoneda PYG / USD</title>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
         <ScrollViewStyleReset />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js')})}",
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

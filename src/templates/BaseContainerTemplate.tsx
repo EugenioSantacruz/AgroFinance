@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Eye, EyeOff, RefreshCw, ShieldCheck } from 'lucide-react-native';
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react-native';
 import { usePrivacy } from '../context/PrivacyContext';
 import { useTheme } from '../context/ThemeContext';
-import { IconBadge, Money, SkeletonBox } from '../components/ui';
+import { IconBadge, Money, SkeletonBox, SyncStatus } from '../components/ui';
 import { CurrencyCode } from '../types/domain';
 
 export interface QuickActionItem {
@@ -85,22 +85,12 @@ export const BaseContainerTemplate: React.FC<BaseContainerTemplateProps> = ({
         </View>
 
         <View style={styles.topBarRight}>
-          {isSyncing ? (
-            <View
-              style={[
-                styles.syncPill,
-                { backgroundColor: theme.primarySoft },
-              ]}
-            >
-              <RefreshCw size={12} color={theme.primary} />
-              <Text style={[styles.syncText, { color: theme.primary }]}>
-                Sincronizando...
-              </Text>
-            </View>
-          ) : null}
+          <SyncStatus isSyncing={isSyncing} />
 
           <TouchableOpacity
             onPress={toggleDisplayCurrency}
+            accessibilityRole="button"
+            accessibilityLabel={`Moneda de visualización ${displayCurrency}. Tocar para cambiar`}
             style={[
               styles.currencyPill,
               {
@@ -127,6 +117,8 @@ export const BaseContainerTemplate: React.FC<BaseContainerTemplateProps> = ({
 
           <TouchableOpacity
             onPress={togglePrivacy}
+            accessibilityRole="button"
+            accessibilityLabel={isPrivate ? 'Mostrar montos' : 'Ocultar montos'}
             style={[
               styles.iconBtn,
               { backgroundColor: theme.surfaceMuted },
@@ -286,6 +278,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scrollContent: {
+    width: '100%',
+    maxWidth: 1100,
+    alignSelf: 'center',
     padding: 16,
     paddingBottom: 40,
   },

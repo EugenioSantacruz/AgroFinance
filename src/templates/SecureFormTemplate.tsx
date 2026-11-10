@@ -26,6 +26,8 @@ interface SecureFormTemplateProps {
   submitLabel: string;
   canSubmit: boolean;
   onSubmit: () => void;
+  secondaryLabel?: string;
+  onSecondarySubmit?: () => void;
   children: React.ReactNode;
 }
 
@@ -38,6 +40,8 @@ export const SecureFormTemplate: React.FC<SecureFormTemplateProps> = ({
   submitLabel,
   canSubmit,
   onSubmit,
+  secondaryLabel,
+  onSecondarySubmit,
   children,
 }) => {
   const { theme } = useTheme();
@@ -136,6 +140,23 @@ export const SecureFormTemplate: React.FC<SecureFormTemplateProps> = ({
           disabled={!canSubmit || isSubmitting}
           icon="CheckCircle2"
         />
+        {secondaryLabel && onSecondarySubmit ? (
+          <TouchableOpacity
+            onPress={onSecondarySubmit}
+            disabled={!canSubmit || isSubmitting}
+            style={[
+              styles.secondaryBtn,
+              {
+                borderColor: theme.primary,
+                opacity: !canSubmit || isSubmitting ? 0.4 : 1,
+              },
+            ]}
+          >
+            <Text style={[styles.secondaryText, { color: theme.primary }]}>
+              {secondaryLabel}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
 
       {isSubmitting ? <HamsterLoader /> : null}
@@ -144,6 +165,16 @@ export const SecureFormTemplate: React.FC<SecureFormTemplateProps> = ({
 };
 
 const styles = StyleSheet.create({
+  secondaryBtn: {
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  secondaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
   screen: {
     flex: 1,
   },

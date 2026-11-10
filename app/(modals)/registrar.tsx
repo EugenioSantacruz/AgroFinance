@@ -14,6 +14,7 @@ import {
   AmountInput,
   Chip,
   EmptyState,
+  FieldError,
   SectionHeader,
   SecureButton,
 } from '../../src/components/ui';
@@ -24,6 +25,7 @@ import { useCheques, useCrearCheque } from '../../src/hooks/useCheques';
 import { useCotizacion } from '../../src/hooks/useCotizacion';
 import { useCuentas } from '../../src/hooks/useCuentas';
 import {
+  useAnularMovimiento,
   useMovimientos,
   useRegistrarMovimiento,
 } from '../../src/hooks/useMovimientos';
@@ -59,6 +61,12 @@ const BANCOS_SUGERIDOS = [
   'Banco Familiar',
   'BNF',
 ];
+
+/** Error de fecha en el momento: solo si el usuario ya escribió algo inválido. */
+const dateError = (v: string): string | null =>
+  v.trim().length > 0 && !isValidDDMMYYYY(v)
+    ? 'Fecha inválida. Usá el formato DD-MM-AAAA'
+    : null;
 
 export default function RegistrarMovimientoModal() {
   const router = useRouter();
@@ -99,6 +107,32 @@ export default function RegistrarMovimientoModal() {
   const [macroCategoria, setMacroCategoria] =
     useState<MacroCategoriaAgro>('INSUMOS_AGRICOLAS');
   const [comprobanteNro, setComprobanteNro] = useState('');
+  const [masOpciones, setMasOpciones] = useState(false);
+  const [savedNotice, setSavedNotice] = useState('');
+  const [lastSavedId, setLastSavedId] = useState<string | null>(null);
+  const anularMutation = useAnularMovimiento();
+
+  // La opción de deshacer vence a los 8 segundos.
+  useEffect(() => {
+    if (!lastSavedId) return;
+    const t = setTimeout(() => {
+      setLastSavedId(null);
+      setSavedNotice('');
+    }, 8000);
+    return () => clearTimeout(t);
+  }, [lastSavedId]);
+
+  const handleUndo = async () => {
+    if (!lastSavedId) return;
+    const id = lastSavedId;
+    setLastSavedId(null);
+    try {
+      await anularMutation.mutateAsync({ movimientoId: id });
+      setSavedNotice('Movimiento deshecho');
+    } catch {
+      setSavedNotice('No se pudo deshacer. Anulalo desde el Libro Diario.');
+    }
+  };
 
   // Campos Cheque Diferido
   const [tipoCheque, setTipoCheque] = useState<TipoChequeDiferido>('EMITIDO');
@@ -258,6 +292,33 @@ export default function RegistrarMovimientoModal() {
     concepto,
     contraparte,
   ]);
+
+  const handleSubmitAndNew = async () => {
+    if (!canSubmit || mode !== 'CONTADO' || !cuentaSeleccionada) return;
+    const catObj = categoriasFiltradas.find((c) => c.macro === macroCategoria);
+    const mov = await registrarMutation.mutateAsync({
+      fecha: fechaContado,
+      ambito,
+      tipo: tipoFlujo,
+      cuentaId: cuentaSeleccionada.id,
+      macroCategoria,
+      subCategoria: catObj?.nombre || 'Operación Directa',
+      concepto: concepto.trim() || catObj?.nombre || 'Registro rápido',
+      contraparte: contraparte.trim() || undefined,
+      moneda,
+      monto: montoNum,
+      tasaCambio: tasa,
+      comprobanteNro: comprobanteNro.trim() || undefined,
+    });
+    setSavedNotice(
+      `✓ Guardado: ${formatMoney(mov.monto, mov.moneda)} · ${mov.concepto}`
+    );
+    setLastSavedId(mov.id);
+    setMontoStr('');
+    setConcepto('');
+    setContraparte('');
+    setComprobanteNro('');
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -431,6 +492,8 @@ export default function RegistrarMovimientoModal() {
       title="Carga Rápida"
       subtitle="Anotá un gasto, ingreso, cheque diferido o compra en cuotas"
       isSubmitting={isSubmitting}
+      secondaryLabel={mode === 'CONTADO' ? 'Guardar y cargar otro' : undefined}
+      onSecondarySubmit={mode === 'CONTADO' ? handleSubmitAndNew : undefined}
       warningMessage={checkSaldo.warning}
       canSubmit={canSubmit}
       submitLabel={
@@ -443,6 +506,40 @@ export default function RegistrarMovimientoModal() {
       onSubmit={handleSubmit}
       validationSummary={validationSummary}
     >
+      {savedNotice ? (
+        <View
+          accessibilityLiveRegion="polite"
+          style={[
+            styles.notice,
+            { backgroundColor: theme.primarySoft, borderColor: theme.primary },
+          ]}
+        >
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 12,
+              fontWeight: '700',
+              color: theme.textPrimary,
+            }}
+          >
+            {savedNotice}
+          </Text>
+          {lastSavedId ? (
+            <TouchableOpacity
+              onPress={handleUndo}
+              accessibilityRole="button"
+              accessibilityLabel="Deshacer el último movimiento guardado"
+            >
+              <Text
+                style={{ color: theme.primary, fontWeight: '800', fontSize: 13 }}
+              >
+                Deshacer
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
+
       {/* Paso 0: Ámbito Negocio vs Personal */}
       <AmbitoSwitch
         includeAll={false}
@@ -532,6 +629,11 @@ export default function RegistrarMovimientoModal() {
         value={montoStr}
         onChangeText={setMontoStr}
         currency={moneda}
+        error={
+          montoStr.trim().length > 0 && montoNum <= 0
+            ? 'Ingresá un monto mayor a 0'
+            : null
+        }
         label={
           mode === 'CUOTAS' && modoImporteCuota === 'CUOTA'
             ? 'VALOR DE CADA CUOTA'
@@ -576,6 +678,7 @@ export default function RegistrarMovimientoModal() {
               },
             ]}
           />
+          <FieldError message={dateError(fechaContado)} />
 
           <SectionHeader
             title="Cuenta / Caja / Tarjeta"
@@ -677,6 +780,7 @@ export default function RegistrarMovimientoModal() {
               },
             ]}
           />
+          <FieldError message={dateError(fechaCobroCheque)} />
 
           <SectionHeader title="Entidad Bancaria del Cheque" />
           <ScrollView
@@ -703,10 +807,18 @@ export default function RegistrarMovimientoModal() {
               styles.input,
               {
                 backgroundColor: theme.surface,
-                borderColor: theme.border,
+                borderColor:
+                  bancoEntidad.trim().length > 0 ? theme.border : theme.danger,
                 color: theme.textPrimary,
               },
             ]}
+          />
+          <FieldError
+            message={
+              bancoEntidad.trim().length === 0
+                ? 'Indicá el banco del cheque'
+                : null
+            }
           />
           <TextInput
             value={numeroCheque}
@@ -844,10 +956,28 @@ export default function RegistrarMovimientoModal() {
               },
             ]}
           />
+          <FieldError message={dateError(primerVencimiento)} />
         </>
       ) : null}
 
       {/* Cliente / Proveedor frecuente y detalle */}
+      {mode === 'CONTADO' ? (
+        <SectionHeader
+          title="Detalles opcionales"
+          actionLabel={
+            masOpciones || contraparte || concepto || comprobanteNro
+              ? 'Ocultar'
+              : 'Más opciones'
+          }
+          onActionPress={() => setMasOpciones((v) => !v)}
+        />
+      ) : null}
+      {mode !== 'CONTADO' ||
+      masOpciones ||
+      contraparte ||
+      concepto ||
+      comprobanteNro ? (
+        <>
       <SectionHeader title="Cliente / Proveedor (Contraparte)" />
       {contrapartesFrecuentes.length > 0 ? (
         <ScrollView
@@ -934,11 +1064,21 @@ export default function RegistrarMovimientoModal() {
           ]}
         />
       ) : null}
+        </>
+      ) : null}
     </SecureFormTemplate>
   );
 }
 
 const styles = StyleSheet.create({
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
   rowChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
