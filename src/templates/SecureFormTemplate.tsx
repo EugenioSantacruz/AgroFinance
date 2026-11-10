@@ -177,6 +177,9 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   header: {
     paddingHorizontal: 16,
