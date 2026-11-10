@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "AgroFinance PY",
+    "slug": "agrofinance-py",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "agrofinance",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "py.com.agrofinance.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "AgroFinance Bimoneda PYG/USD",
+      "shortName": "AgroFinance",
+      "lang": "es-PY",
+      "themeColor": "#064E3B",
+      "backgroundColor": "#0B1310"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
+

@@ -1,0 +1,19 @@
+export const APP_CONFIG = {
+  APP_NAME: 'AgroFinance PY',
+  SUBTITLE: 'Gestión Patrimonial, Negocio & Flujo Bimoneda',
+  GAS_URL: process.env.EXPO_PUBLIC_GAS_URL || '',
+  MASTER_PIN: process.env.EXPO_PUBLIC_MASTER_PIN || '246810',
+  DEFAULT_LOCALE: 'es-PY',
+  DEFAULT_EXCHANGE_RATE: 7835,
+  STORAGE_KEYS: {
+    THEME_MODE: '@agrofinance:theme_mode',
+    PRIVACY_MASK: '@agrofinance:privacy_mask',
+    ACTIVE_CAMPANA: '@agrofinance:active_campana',
+    ACTIVE_AMBITO: '@agrofinance:active_ambito',
+    DISPLAY_CURRENCY: '@agrofinance:display_currency',
+    WEBAUTHN_CREDENTIAL_ID: '@agrofinance:webauthn_cred_id',
+    PIN_ENABLED: '@agrofinance:pin_enabled',
+    LAST_ACCOUNT_ID: '@agrofinance:last_account_id',
+    MOCK_STATE_CACHE: '@agrofinance:mock_state_v2',
+  },
+} as const;
