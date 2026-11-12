@@ -12,6 +12,7 @@ import { usePrivacy } from '../context/PrivacyContext';
 import { useTheme } from '../context/ThemeContext';
 import { IconBadge, Money, SkeletonBox, SyncStatus } from '../components/ui';
 import { CurrencyCode } from '../types/domain';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 export interface QuickActionItem {
   id: string;
@@ -54,6 +55,7 @@ export const BaseContainerTemplate: React.FC<BaseContainerTemplateProps> = ({
   children,
 }) => {
   const { theme } = useTheme();
+  const { isDesktop, contentMaxWidth } = useBreakpoint();
   const {
     isPrivate,
     togglePrivacy,
@@ -67,13 +69,20 @@ export const BaseContainerTemplate: React.FC<BaseContainerTemplateProps> = ({
       <View
         style={[
           styles.topBar,
+          isDesktop && styles.topBarDesktop,
           { backgroundColor: theme.surface, borderBottomColor: theme.border },
         ]}
       >
         <View style={styles.topBarLeft}>
           <View style={styles.brandRow}>
-            <ShieldCheck size={18} color={theme.primary} />
-            <Text style={[styles.topTitle, { color: theme.textPrimary }]}>
+            <ShieldCheck size={isDesktop ? 20 : 18} color={theme.primary} />
+            <Text
+              style={[
+                styles.topTitle,
+                isDesktop && { fontSize: 18 },
+                { color: theme.textPrimary },
+              ]}
+            >
               {title}
             </Text>
           </View>
@@ -134,7 +143,10 @@ export const BaseContainerTemplate: React.FC<BaseContainerTemplateProps> = ({
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { maxWidth: contentMaxWidth, padding: isDesktop ? 24 : 16 },
+        ]}
         refreshControl={
           onRefresh ? (
             <RefreshControl
@@ -145,66 +157,78 @@ export const BaseContainerTemplate: React.FC<BaseContainerTemplateProps> = ({
           ) : undefined
         }
       >
-        {/* Hero Card Patrimonial con soporte isLoadingHero */}
+        {/* Hero Card Patrimonial con soporte Desktop & Mobile */}
         <View
           style={[
             styles.heroCard,
+            isDesktop && styles.heroCardDesktop,
             {
               backgroundColor: theme.heroBackground,
               borderColor: theme.heroBorder,
             },
           ]}
         >
-          <View style={styles.heroHeaderRow}>
-            <Text style={styles.heroLabel}>{heroLabel}</Text>
-            {exchangeRateBadge ? (
-              <View style={styles.rateBadge}>
-                <Text style={styles.rateBadgeText}>{exchangeRateBadge}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {isLoadingHero ? (
-            <View style={{ gap: 10, paddingVertical: 6 }}>
-              <SkeletonBox width="70%" height={34} borderRadius={10} />
-              <SkeletonBox width="48%" height={18} borderRadius={6} />
-            </View>
-          ) : (
-            <>
-              <Money
-                amount={heroAmount}
-                currency={heroCurrency}
-                size="hero"
-                tone="inverse"
-              />
-              {typeof heroSecondaryAmount === 'number' &&
-              heroSecondaryCurrency ? (
-                <View style={styles.heroSecondaryRow}>
-                  <Text style={styles.heroSecondaryLabel}>
-                    {heroSecondaryLabel || 'Equivalente Bimoneda:'}
-                  </Text>
-                  <Money
-                    amount={heroSecondaryAmount}
-                    currency={heroSecondaryCurrency}
-                    size="sm"
-                    tone="inverse"
-                  />
+          {/* Columna de Datos Numéricos */}
+          <View style={[isDesktop && styles.heroLeftColDesktop]}>
+            <View style={styles.heroHeaderRow}>
+              <Text style={styles.heroLabel}>{heroLabel}</Text>
+              {exchangeRateBadge ? (
+                <View style={styles.rateBadge}>
+                  <Text style={styles.rateBadgeText}>{exchangeRateBadge}</Text>
                 </View>
               ) : null}
-            </>
-          )}
+            </View>
 
-          {/* Grilla de 4 Acciones Rápidas */}
+            {isLoadingHero ? (
+              <View style={{ gap: 10, paddingVertical: 6 }}>
+                <SkeletonBox width="70%" height={34} borderRadius={10} />
+                <SkeletonBox width="48%" height={18} borderRadius={6} />
+              </View>
+            ) : (
+              <View style={{ gap: 4, marginTop: 4 }}>
+                <Money
+                  amount={heroAmount}
+                  currency={heroCurrency}
+                  size={isDesktop ? 'hero' : 'hero'}
+                  tone="inverse"
+                />
+                {typeof heroSecondaryAmount === 'number' &&
+                heroSecondaryCurrency ? (
+                  <View style={styles.heroSecondaryRow}>
+                    <Text style={styles.heroSecondaryLabel}>
+                      {heroSecondaryLabel || 'Equivalente Bimoneda:'}
+                    </Text>
+                    <Money
+                      amount={heroSecondaryAmount}
+                      currency={heroSecondaryCurrency}
+                      size="sm"
+                      tone="inverse"
+                    />
+                  </View>
+                ) : null}
+              </View>
+            )}
+          </View>
+
+          {/* Grilla / Fila de Acciones Rápidas */}
           {quickActions.length > 0 ? (
-            <View style={styles.actionsGrid}>
+            <View
+              style={[
+                styles.actionsGrid,
+                isDesktop && styles.actionsGridDesktop,
+              ]}
+            >
               {quickActions.map((act) => (
                 <TouchableOpacity
                   key={act.id}
-                  style={styles.actionButton}
+                  style={[
+                    styles.actionButton,
+                    isDesktop && styles.actionButtonDesktop,
+                  ]}
                   onPress={act.onPress}
                   activeOpacity={0.8}
                 >
-                  <IconBadge icon={act.icon} size={17} tone="inverse" />
+                  <IconBadge icon={act.icon} size={18} tone="inverse" />
                   <Text numberOfLines={1} style={styles.actionLabel}>
                     {act.label}
                   </Text>
@@ -232,13 +256,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  topBarDesktop: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+  },
   topBarLeft: {
     flex: 1,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   topTitle: {
     fontSize: 16,
@@ -251,19 +279,7 @@ const styles = StyleSheet.create({
   topBarRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  syncPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 999,
-  },
-  syncText: {
-    fontSize: 11,
-    fontWeight: '700',
+    gap: 10,
   },
   currencyPill: {
     paddingHorizontal: 10,
@@ -279,21 +295,31 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     width: '100%',
-    maxWidth: 1100,
     alignSelf: 'center',
-    padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
   heroCard: {
     borderRadius: 20,
     borderWidth: 1,
     padding: 18,
-    gap: 10,
+    gap: 12,
+  },
+  heroCardDesktop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+    gap: 24,
+  },
+  heroLeftColDesktop: {
+    flex: 1.2,
+    gap: 8,
   },
   heroHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
   heroLabel: {
     color: '#A7F3D0',
@@ -304,7 +330,7 @@ const styles = StyleSheet.create({
   },
   rateBadge: {
     backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
@@ -317,6 +343,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginTop: 2,
   },
   heroSecondaryLabel: {
     color: '#A7F3D0',
@@ -331,18 +358,32 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.12)',
     gap: 8,
   },
+  actionsGridDesktop: {
+    flex: 1,
+    marginTop: 0,
+    paddingTop: 0,
+    borderTopWidth: 0,
+    gap: 10,
+    justifyContent: 'flex-end',
+  },
   actionButton: {
     flex: 1,
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  actionButtonDesktop: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    maxWidth: 130,
   },
   actionLabel: {
     color: '#ECFDF5',
     fontSize: 11,
     fontWeight: '700',
+    textAlign: 'center',
   },
 });
-
