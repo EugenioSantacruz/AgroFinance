@@ -3,21 +3,27 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Search, X } from 'lucide-react-native';
 import { useTheme } from '../../src/context/ThemeContext';
 import { BaseContainerTemplate } from '../../src/templates/BaseContainerTemplate';
 import {
   AmbitoSwitch,
   Chip,
   EmptyState,
+  IconBadge,
   ListRow,
+  Money,
+  ScopeBadge,
   SectionHeader,
   SkeletonList,
 } from '../../src/components/ui';
 import { usePrivacy } from '../../src/context/PrivacyContext';
+import { useBreakpoint } from '../../src/hooks/useBreakpoint';
 import { useMetricas } from '../../src/hooks/useMetricas';
 import {
   useAnularMovimiento,
@@ -35,6 +41,7 @@ type TipoFiltro = 'ALL' | 'INGRESOS' | 'GASTOS' | 'TRANSFERENCIAS';
 
 export default function HistorialScreen() {
   const router = useRouter();
+  const { isDesktop } = useBreakpoint();
   const {
     displayCurrency,
     activeCampanaId,
@@ -44,6 +51,7 @@ export default function HistorialScreen() {
   } = usePrivacy();
   const [monedaFilter, setMonedaFilter] = useState<'ALL' | CurrencyCode>('ALL');
   const [tipoFilter, setTipoFilter] = useState<TipoFiltro>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const { theme } = useTheme();
   const [pendingAnular, setPendingAnular] = useState<string | null>(null);
   const pendingRef = useRef<{
@@ -79,7 +87,18 @@ export default function HistorialScreen() {
           m.tipo === 'RETIRO_PERSONAL' ||
           m.tipo === 'APORTE_NEGOCIO' ||
           m.tipo === 'PAGO_TARJETA';
-    return matchAmbito && matchMoneda && matchTipo;
+
+    if (!matchAmbito || !matchMoneda || !matchTipo) return false;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchConcepto = (m.concepto || '').toLowerCase().includes(q);
+      const matchContraparte = (m.contraparte || '').toLowerCase().includes(q);
+      const matchCat = (m.subCategoria || '').toLowerCase().includes(q);
+      if (!matchConcepto && !matchContraparte && !matchCat) return false;
+    }
+
+    return true;
   });
 
   // Anular con "Deshacer": se aplica a los 6 s salvo que el usuario lo cancele.
@@ -111,6 +130,24 @@ export default function HistorialScreen() {
     if (p) clearTimeout(p.timer);
     pendingRef.current = null;
     setPendingAnular(null);
+  };
+
+  const getMovementIcon = (tipo: string, macroCategoria: string) => {
+    const isNeutral =
+      tipo === 'TRANSFERENCIA' ||
+      tipo === 'RETIRO_PERSONAL' ||
+      tipo === 'APORTE_NEGOCIO' ||
+      tipo === 'PAGO_TARJETA';
+
+    if (tipo === 'CHEQUE_COBRADO' || tipo === 'CHEQUE_PAGADO') return 'Banknote';
+    if (tipo === 'PAGO_CUOTA' || tipo === 'COBRO_CUOTA') return 'CalendarClock';
+    if (isNeutral) return 'ArrowLeftRight';
+    if (macroCategoria === 'HOGAR_ALIMENTACION') return 'Home';
+    if (macroCategoria === 'SERVICIOS_SALUD') return 'HeartPulse';
+    if (macroCategoria === 'MOVILIDAD_PERSONAL') return 'Car';
+    if (macroCategoria === 'INSUMOS_AGRICOLAS') return 'Sprout';
+    if (macroCategoria === 'VENTAS_AGRO') return 'Wheat';
+    return 'Receipt';
   };
 
   return (
@@ -173,55 +210,98 @@ export default function HistorialScreen() {
         <AmbitoSwitch value={activeAmbito} onChange={setActiveAmbito} />
       </View>
 
-      <SectionHeader title="Filtrar Movimientos" />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtersRow}
-      >
-        <Chip
-          label="Todos"
-          selected={tipoFilter === 'ALL'}
-          onPress={() => setTipoFilter('ALL')}
-        />
-        <Chip
-          label="Ingresos"
-          icon="TrendingUp"
-          selected={tipoFilter === 'INGRESOS'}
-          onPress={() => setTipoFilter('INGRESOS')}
-        />
-        <Chip
-          label="Gastos / Pagos"
-          icon="TrendingDown"
-          selected={tipoFilter === 'GASTOS'}
-          onPress={() => setTipoFilter('GASTOS')}
-        />
-        <Chip
-          label="Retiros / Transf."
-          icon="ArrowLeftRight"
-          selected={tipoFilter === 'TRANSFERENCIAS'}
-          onPress={() => setTipoFilter('TRANSFERENCIAS')}
-        />
-      </ScrollView>
+      {/* Barra de Filtros & Búsqueda (Optimizada para Desktop & Mobile) */}
+      <View style={{ marginTop: 16, gap: 10 }}>
+        <SectionHeader title="Filtros & Búsqueda" />
 
-      <View style={[styles.filtersRow, { marginTop: 8 }]}>
-        <Chip
-          label="PYG + USD"
-          selected={monedaFilter === 'ALL'}
-          onPress={() => setMonedaFilter('ALL')}
-        />
-        <Chip
-          label="Solo PYG"
-          selected={monedaFilter === 'PYG'}
-          onPress={() => setMonedaFilter('PYG')}
-        />
-        <Chip
-          label="Solo USD"
-          selected={monedaFilter === 'USD'}
-          onPress={() => setMonedaFilter('USD')}
-        />
+        {/* Buscador de Texto */}
+        <View
+          style={[
+            styles.searchBar,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <Search size={18} color={theme.textMuted} />
+          <TextInput
+            placeholder="Buscar por concepto, proveedor o categoría..."
+            placeholderTextColor={theme.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={[styles.searchInput, { color: theme.textPrimary }]}
+          />
+          {searchQuery.length > 0 ? (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              style={{ padding: 4 }}
+            >
+              <X size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {/* Chips de Categoría y Moneda */}
+        <View
+          style={[
+            styles.filterControlsContainer,
+            isDesktop && styles.filterControlsDesktop,
+          ]}
+        >
+          {/* Tipos */}
+          <ScrollView
+            horizontal={!isDesktop}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersRow}
+          >
+            <Chip
+              label="Todos"
+              selected={tipoFilter === 'ALL'}
+              onPress={() => setTipoFilter('ALL')}
+            />
+            <Chip
+              label="Ingresos"
+              icon="TrendingUp"
+              selected={tipoFilter === 'INGRESOS'}
+              onPress={() => setTipoFilter('INGRESOS')}
+            />
+            <Chip
+              label="Gastos / Pagos"
+              icon="TrendingDown"
+              selected={tipoFilter === 'GASTOS'}
+              onPress={() => setTipoFilter('GASTOS')}
+            />
+            <Chip
+              label="Retiros / Transf."
+              icon="ArrowLeftRight"
+              selected={tipoFilter === 'TRANSFERENCIAS'}
+              onPress={() => setTipoFilter('TRANSFERENCIAS')}
+            />
+          </ScrollView>
+
+          {/* Monedas */}
+          <View style={styles.filtersRow}>
+            <Chip
+              label="PYG + USD"
+              selected={monedaFilter === 'ALL'}
+              onPress={() => setMonedaFilter('ALL')}
+            />
+            <Chip
+              label="Solo PYG"
+              selected={monedaFilter === 'PYG'}
+              onPress={() => setMonedaFilter('PYG')}
+            />
+            <Chip
+              label="Solo USD"
+              selected={monedaFilter === 'USD'}
+              onPress={() => setMonedaFilter('USD')}
+            />
+          </View>
+        </View>
       </View>
 
+      {/* Undo Bar */}
       {pendingAnular ? (
         <View
           accessibilityLiveRegion="polite"
@@ -254,18 +334,202 @@ export default function HistorialScreen() {
         </View>
       ) : null}
 
-      <SectionHeader
-        title={`Movimientos Registrados (${filtered.length})`}
-      />
+      <View style={{ marginTop: 14 }}>
+        <SectionHeader
+          title={`Movimientos Registrados (${filtered.length})`}
+        />
+      </View>
+
       {isLoading ? (
-        <SkeletonList rows={5} />
+        <SkeletonList rows={6} />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="Receipt"
           title="Sin movimientos para este filtro"
           description="Cargá un gasto, ingreso, pago de cuota o retiro desde los atajos superiores."
         />
+      ) : isDesktop ? (
+        /* Vista Tabla Ejecutiva Desktop */
+        <View
+          style={[
+            styles.desktopTableCard,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        >
+          {/* Encabezado de la tabla */}
+          <View
+            style={[
+              styles.tableHeader,
+              {
+                backgroundColor: theme.surfaceMuted,
+                borderBottomColor: theme.border,
+              },
+            ]}
+          >
+            <Text style={[styles.th, { width: 100 }, { color: theme.textMuted }]}>
+              FECHA
+            </Text>
+            <Text style={[styles.th, { width: 180 }, { color: theme.textMuted }]}>
+              CATEGORÍA
+            </Text>
+            <Text style={[styles.th, { width: 95 }, { color: theme.textMuted }]}>
+              ÁMBITO
+            </Text>
+            <Text style={[styles.th, { flex: 1 }, { color: theme.textMuted }]}>
+              DETALLE / CONTRAPARTE
+            </Text>
+            <Text
+              style={[
+                styles.th,
+                { width: 150, textAlign: 'right' },
+                { color: theme.textMuted },
+              ]}
+            >
+              MONTO
+            </Text>
+            <Text
+              style={[
+                styles.th,
+                { width: 140, textAlign: 'right' },
+                { color: theme.textMuted },
+              ]}
+            >
+              EQUIVALENTE
+            </Text>
+            <Text
+              style={[
+                styles.th,
+                { width: 90, textAlign: 'center' },
+                { color: theme.textMuted },
+              ]}
+            >
+              ACCIÓN
+            </Text>
+          </View>
+
+          {/* Filas */}
+          {filtered.map((m, index) => {
+            const isIncome = isCashInflow(m.tipo);
+            const isNeutral =
+              m.tipo === 'TRANSFERENCIA' ||
+              m.tipo === 'RETIRO_PERSONAL' ||
+              m.tipo === 'APORTE_NEGOCIO' ||
+              m.tipo === 'PAGO_TARJETA';
+            const icon = getMovementIcon(m.tipo, m.macroCategoria);
+            const canAnnul =
+              !m.referenciaId && (isIncome || isCashOutflow(m.tipo));
+
+            const isLast = index === filtered.length - 1;
+
+            return (
+              <View
+                key={m.id}
+                style={[
+                  styles.tableRow,
+                  { borderBottomColor: theme.border },
+                  isLast && { borderBottomWidth: 0 },
+                ]}
+              >
+                {/* Fecha */}
+                <View style={{ width: 100 }}>
+                  <Text style={[styles.tableCellDate, { color: theme.textSecondary }]}>
+                    {m.fecha}
+                  </Text>
+                </View>
+
+                {/* Categoría con Icono */}
+                <View style={[styles.tableCellCat, { width: 180 }]}>
+                  <IconBadge
+                    icon={icon}
+                    size={15}
+                    tone={isIncome ? 'primary' : isNeutral ? 'neutral' : 'gold'}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.tableCellTitle, { color: theme.textPrimary }]}
+                  >
+                    {m.subCategoria}
+                  </Text>
+                </View>
+
+                {/* Ámbito */}
+                <View style={{ width: 95 }}>
+                  <ScopeBadge scope={m.ambito || 'NEGOCIO'} />
+                </View>
+
+                {/* Concepto y Contraparte */}
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.tableCellConcept, { color: theme.textPrimary }]}
+                  >
+                    {m.concepto}
+                  </Text>
+                  {m.contraparte ? (
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.tableCellSub, { color: theme.textMuted }]}
+                    >
+                      {m.contraparte}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Monto Original */}
+                <View style={{ width: 150, alignItems: 'flex-end' }}>
+                  <Money
+                    amount={m.monto}
+                    currency={m.moneda}
+                    size="md"
+                    tone={
+                      isNeutral ? 'default' : isIncome ? 'positive' : 'negative'
+                    }
+                  />
+                </View>
+
+                {/* Equivalente Bimoneda */}
+                <View style={{ width: 140, alignItems: 'flex-end' }}>
+                  <Text style={[styles.tableCellEq, { color: theme.textSecondary }]}>
+                    Eq:{' '}
+                    {formatMoney(
+                      m.moneda === 'USD' ? m.montoPYG : m.montoUSD,
+                      m.moneda === 'USD' ? 'PYG' : 'USD',
+                      isPrivate
+                    )}
+                  </Text>
+                </View>
+
+                {/* Botón Acción */}
+                <View style={{ width: 90, alignItems: 'center' }}>
+                  {canAnnul ? (
+                    <TouchableOpacity
+                      onPress={() => handleAnular(m.id)}
+                      style={[
+                        styles.tableActionBtn,
+                        { backgroundColor: theme.dangerSoft },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.tableActionText,
+                          { color: theme.danger },
+                        ]}
+                      >
+                        Anular
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={{ fontSize: 11, color: theme.textMuted }}>
+                      —
+                    </Text>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
       ) : (
+        /* Vista Móvil Clásica con ListRow */
         <View style={{ gap: 10 }}>
           {filtered.map((m) => {
             const isIncome = isCashInflow(m.tipo);
@@ -274,26 +538,7 @@ export default function HistorialScreen() {
               m.tipo === 'RETIRO_PERSONAL' ||
               m.tipo === 'APORTE_NEGOCIO' ||
               m.tipo === 'PAGO_TARJETA';
-
-            const icon =
-              m.tipo === 'CHEQUE_COBRADO' || m.tipo === 'CHEQUE_PAGADO'
-                ? 'Banknote'
-                : m.tipo === 'PAGO_CUOTA' || m.tipo === 'COBRO_CUOTA'
-                ? 'CalendarClock'
-                : isNeutral
-                ? 'ArrowLeftRight'
-                : m.macroCategoria === 'HOGAR_ALIMENTACION'
-                ? 'Home'
-                : m.macroCategoria === 'SERVICIOS_SALUD'
-                ? 'HeartPulse'
-                : m.macroCategoria === 'MOVILIDAD_PERSONAL'
-                ? 'Car'
-                : m.macroCategoria === 'INSUMOS_AGRICOLAS'
-                ? 'Sprout'
-                : m.macroCategoria === 'VENTAS_AGRO'
-                ? 'Wheat'
-                : 'Receipt';
-
+            const icon = getMovementIcon(m.tipo, m.macroCategoria);
             const contraparteMeta = m.contraparte ? ` · ${m.contraparte}` : '';
             const canAnnul =
               !m.referenciaId && (isIncome || isCashOutflow(m.tipo));
@@ -343,8 +588,90 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 12,
   },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    padding: 0,
+  },
+  filterControlsContainer: {
+    gap: 8,
+  },
+  filterControlsDesktop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   filtersRow: {
     flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
+  },
+  desktopTableCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  th: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  tableCellDate: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tableCellCat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tableCellTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+  },
+  tableCellConcept: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  tableCellSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  tableCellEq: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tableActionBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  tableActionText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
 });
