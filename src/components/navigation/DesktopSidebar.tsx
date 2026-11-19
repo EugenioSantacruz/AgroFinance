@@ -44,8 +44,8 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'historial',
     name: 'historial',
-    label: 'Libro Diario',
-    subtitle: 'Asientos, Ingresos & Gastos',
+    label: 'Movimientos',
+    subtitle: 'Ingresos, Gastos y Pagos',
     icon: Receipt,
     path: '/(tabs)/historial',
   },
@@ -155,7 +155,7 @@ export const DesktopSidebar: React.FC = () => {
           accessibilityLabel="Registrar nuevo movimiento"
         >
           <Plus size={18} color="#FFFFFF" strokeWidth={2.8} />
-          <Text style={styles.registerBtnText}>+ Asiento / Registro</Text>
+          <Text style={styles.registerBtnText}>Registrar Movimiento</Text>
         </TouchableOpacity>
       </View>
 
