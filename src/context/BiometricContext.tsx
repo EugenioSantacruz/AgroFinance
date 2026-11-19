@@ -148,7 +148,7 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
           </View>
           <Text style={styles.brandTitle}>AGROFINANCE PARAGUAY</Text>
           <Text style={styles.brandSub}>
-            Control Patrimonial, Negocio & Flujo Bimoneda
+            Tus finanzas y campo en un solo lugar
           </Text>
 
           <View style={styles.dotsRow}>
@@ -227,7 +227,7 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
           <View style={styles.footerSecurityRow}>
             <Lock size={13} color="#6EE7B7" />
             <Text style={styles.footerSecurityText}>
-              Cifrado Local + WebAuthn UV Hardware Passkey
+              Tus datos están protegidos en este dispositivo
             </Text>
           </View>
         </View>

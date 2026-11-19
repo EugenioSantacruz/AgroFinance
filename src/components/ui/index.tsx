@@ -13,6 +13,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { AmbitoFiltro, AmbitoFinanciero, CurrencyCode } from '../../types/domain';
 import { IconBadge } from './IconBadge';
 import { Money } from './Money';
+import { formatNumberPY } from '../../utils/formatters';
 import {
   HamsterLoader,
   SkeletonBox,
@@ -368,7 +369,7 @@ export const AmountInput: React.FC<{
   onChangeText,
   currency,
   onToggleCurrency,
-  label = 'MONTO EN MONEDA NATIVA',
+  label = 'Monto a ingresar',
 }) => {
   const { theme } = useTheme();
   return (
@@ -427,6 +428,21 @@ export const AmountInput: React.FC<{
           style={[styles.amountInputText, { color: theme.textPrimary }]}
         />
       </View>
+      {value && !isNaN(Number(value)) && Number(value) > 0 ? (
+        <View style={styles.amountPreviewRow}>
+          <Text style={[styles.amountPreviewLabel, { color: theme.textMuted }]}>
+            En números:
+          </Text>
+          <Text style={[styles.amountPreviewVal, { color: theme.primary }]}>
+            {currency === 'PYG'
+              ? `Gs. ${formatNumberPY(Number(value))}`
+              : `US$ ${Number(value).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -501,9 +517,11 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    minHeight: 34,
     borderRadius: 999,
     borderWidth: 1,
   },
@@ -608,6 +626,22 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '800',
     paddingVertical: 4,
+  },
+  amountPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(148, 163, 184, 0.15)',
+  },
+  amountPreviewLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  amountPreviewVal: {
+    fontSize: 13,
+    fontWeight: '800',
   },
   emptyBox: {
     padding: 24,

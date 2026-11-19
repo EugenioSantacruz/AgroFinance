@@ -64,8 +64,8 @@ export default function AjustesScreen() {
   return (
     <BaseContainerTemplate
       title="Ajustes & Cuentas"
-      subtitle="Cuentas, Google Sheets, Tasa USD/PYG y Acceso Rápido"
-      heroLabel="Cotización Vigente USD / PYG (Referencia BCP)"
+      subtitle="Cuentas, cotización USD/PYG y seguridad"
+      heroLabel="Cotización Dólar BCP"
       heroAmount={cotizacion?.referenciaBCP || 7835}
       heroCurrency="PYG"
       exchangeRateBadge={`Actualizado: ${cotizacion?.fecha || 'Hoy'}`}
@@ -104,13 +104,13 @@ export default function AjustesScreen() {
           tone={isGoogleSheetsConnected ? 'primary' : 'gold'}
           title={
             isGoogleSheetsConnected
-              ? 'Conectado a Google Sheets'
-              : 'Modo Local Offline (Demo)'
+              ? 'Sincronización en la Nube Activa'
+              : 'Modo Local (Sin Conexión a la Nube)'
           }
           subtitle={
             isGoogleSheetsConnected
-              ? 'Sincronizando directo contra tu Web App de Apps Script (.env).'
-              : 'Pegá tu URL /exec en .env (EXPO_PUBLIC_GAS_URL) para sincronizar con Sheets.'
+              ? 'Tus movimientos se sincronizan automáticamente con tu planilla de Google Sheets.'
+              : 'Los datos se guardan de forma local en este dispositivo.'
           }
         />
         <ListRow
@@ -140,7 +140,7 @@ export default function AjustesScreen() {
         />
       </View>
 
-      <SectionHeader title="Seguridad y Carga Rápida" />
+      <SectionHeader title="Seguridad y Acceso" />
       <Card style={{ gap: 12 }}>
         <ListRow
           icon="Lock"
@@ -165,13 +165,13 @@ export default function AjustesScreen() {
           tone="primary"
           title={
             hasPasskeyLinked
-              ? 'Face ID / Passkey Activo'
-              : 'Face ID / Passkey No Vinculado'
+              ? 'Face ID o Huella Digital Activada'
+              : 'Face ID o Huella No Vinculada'
           }
           subtitle={
             webAuthnSupported
-              ? 'Autenticador biométrico de plataforma detectado'
-              : `PIN Maestro de respaldo: ${APP_CONFIG.MASTER_PIN}`
+              ? 'Sensor biométrico detectado en este dispositivo'
+              : `Acceso protegido mediante PIN maestro`
           }
         />
 
@@ -184,19 +184,19 @@ export default function AjustesScreen() {
         <View style={styles.btnRow}>
           {!hasPasskeyLinked ? (
             <SecureButton
-              label="Vincular Face ID / Touch ID (WebAuthn)"
+              label="Vincular Huella o Face ID"
               onPress={handleLinkPasskey}
               icon="Fingerprint"
             />
           ) : (
             <SecureButton
-              label="Desvincular Passkey de este Dispositivo"
+              label="Desvincular Huella o Face ID"
               onPress={unlinkPasskey}
               variant="danger"
             />
           )}
           <SecureButton
-            label="Bloquear Bóveda Ahora"
+            label="Bloquear Aplicación Ahora"
             onPress={lockApp}
             variant="secondary"
             icon="Lock"
@@ -219,7 +219,7 @@ export default function AjustesScreen() {
         />
         {!isGoogleSheetsConnected ? (
           <SecureButton
-            label="Restaurar Datos Demo de Dani (Maní + Personal)"
+            label="Cargar Datos de Ejemplo (Demostración)"
             onPress={() => restoreDemoMutation.mutateAsync()}
             variant="secondary"
             disabled={restoreDemoMutation.isPending}

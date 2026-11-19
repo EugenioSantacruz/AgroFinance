@@ -539,12 +539,43 @@ export function computeServerMetricas(
 
   const chequesEmitidosUSD = scopedCheques
     .filter((ch) => ch.estado === 'PENDIENTE' && ch.tipo === 'EMITIDO')
-    .reduce((acc, ch) => acc + ch.montoUSD, 0);
+    .reduce(
+      (acc, ch) =>
+        acc + (ch.moneda === 'USD' ? ch.monto : ch.monto / tasa),
+      0
+    );
 
   const pasivoTotalUSD = Number(
     (deudaPrestamosUSD + deudaTarjetasUSD + chequesEmitidosUSD).toFixed(2)
   );
-  const pasivoTotalPYG = Math.round(pasivoTotalUSD * tasa);
+
+  const deudaTarjetasPYG = scopedCuentas
+    .filter((c) => isTarjetaCuenta(c.tipo))
+    .reduce(
+      (acc, c) =>
+        acc + (c.moneda === 'PYG' ? c.deudaActual : c.deudaActual * tasa),
+      0
+    );
+
+  const deudaPrestamosPYG = scopedPrestamos
+    .filter((p) => p.estado !== 'CANCELADO' && (p.direccion || 'PAGAR') === 'PAGAR')
+    .reduce(
+      (acc, p) =>
+        acc + (p.moneda === 'PYG' ? p.saldoPendiente : p.saldoPendiente * tasa),
+      0
+    );
+
+  const chequesEmitidosPYG = scopedCheques
+    .filter((ch) => ch.estado === 'PENDIENTE' && ch.tipo === 'EMITIDO')
+    .reduce(
+      (acc, ch) =>
+        acc + (ch.moneda === 'PYG' ? ch.monto : ch.monto * tasa),
+      0
+    );
+
+  const pasivoTotalPYG = Math.round(
+    deudaTarjetasPYG + deudaPrestamosPYG + chequesEmitidosPYG
+  );
 
   const patrimonioNetoUSD = Number(
     (liquidezConsolidadaUSD - pasivoTotalUSD).toFixed(2)
@@ -559,18 +590,51 @@ export function computeServerMetricas(
     return scopeOk && campOk;
   });
 
+  const ingresosCampanaPYG = Math.round(
+    filteredMovs
+      .filter((m) => isCashInflow(m.tipo))
+      .reduce(
+        (acc, m) =>
+          acc + (m.moneda === 'PYG' ? m.monto : m.monto * tasa),
+        0
+      )
+  );
+
+  const costosCampanaPYG = Math.round(
+    filteredMovs
+      .filter((m) => isCashOutflow(m.tipo))
+      .reduce(
+        (acc, m) =>
+          acc + (m.moneda === 'PYG' ? m.monto : m.monto * tasa),
+        0
+      )
+  );
+
   const ingresosCampanaUSD = Number(
     filteredMovs
       .filter((m) => isCashInflow(m.tipo))
-      .reduce((acc, m) => acc + m.montoUSD, 0)
+      .reduce(
+        (acc, m) =>
+          acc + (m.moneda === 'USD' ? m.monto : m.monto / tasa),
+        0
+      )
       .toFixed(2)
   );
 
   const costosCampanaUSD = Number(
     filteredMovs
       .filter((m) => isCashOutflow(m.tipo))
-      .reduce((acc, m) => acc + m.montoUSD, 0)
+      .reduce(
+        (acc, m) =>
+          acc + (m.moneda === 'USD' ? m.monto : m.monto / tasa),
+        0
+      )
       .toFixed(2)
+  );
+
+  const margenBrutoCampanaPYG = ingresosCampanaPYG - costosCampanaPYG;
+  const margenBrutoCampanaUSD = Number(
+    (ingresosCampanaUSD - costosCampanaUSD).toFixed(2)
   );
 
   return {
@@ -584,15 +648,11 @@ export function computeServerMetricas(
     patrimonioNetoPYG,
     patrimonioNetoUSD,
     ingresosCampanaUSD,
-    ingresosCampanaPYG: Math.round(ingresosCampanaUSD * tasa),
+    ingresosCampanaPYG,
     costosCampanaUSD,
-    costosCampanaPYG: Math.round(costosCampanaUSD * tasa),
-    margenBrutoCampanaUSD: Number(
-      (ingresosCampanaUSD - costosCampanaUSD).toFixed(2)
-    ),
-    margenBrutoCampanaPYG: Math.round(
-      (ingresosCampanaUSD - costosCampanaUSD) * tasa
-    ),
+    costosCampanaPYG,
+    margenBrutoCampanaUSD,
+    margenBrutoCampanaPYG,
   };
 }
 

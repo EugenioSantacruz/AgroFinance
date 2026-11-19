@@ -223,13 +223,21 @@ function getMetricasDashboard(campanaId) {
     return !campanaId || campanaId === 'ALL' || m.campanaId === campanaId;
   });
 
+  const ingresosCampanaPYG = Math.round(movsCampana
+    .filter(function(m) { return m.tipo === 'INGRESO'; })
+    .reduce(function(s, m) { return s + (m.moneda === 'PYG' ? m.monto : m.monto * tasa); }, 0));
+
+  const costosCampanaPYG = Math.round(movsCampana
+    .filter(function(m) { return m.tipo === 'GASTO'; })
+    .reduce(function(s, m) { return s + (m.moneda === 'PYG' ? m.monto : m.monto * tasa); }, 0));
+
   const ingresosCampanaUSD = Number(movsCampana
     .filter(function(m) { return m.tipo === 'INGRESO'; })
-    .reduce(function(s, m) { return s + m.montoUSD; }, 0).toFixed(2));
+    .reduce(function(s, m) { return s + (m.moneda === 'USD' ? m.monto : m.monto / tasa); }, 0).toFixed(2));
 
   const costosCampanaUSD = Number(movsCampana
     .filter(function(m) { return m.tipo === 'GASTO'; })
-    .reduce(function(s, m) { return s + m.montoUSD; }, 0).toFixed(2));
+    .reduce(function(s, m) { return s + (m.moneda === 'USD' ? m.monto : m.monto / tasa); }, 0).toFixed(2));
 
   return {
     tasaCambioReferencia: tasa,
@@ -242,11 +250,11 @@ function getMetricasDashboard(campanaId) {
     patrimonioNetoPYG: patrimonioNetoPYG,
     patrimonioNetoUSD: patrimonioNetoUSD,
     ingresosCampanaUSD: ingresosCampanaUSD,
-    ingresosCampanaPYG: Math.round(ingresosCampanaUSD * tasa),
+    ingresosCampanaPYG: ingresosCampanaPYG,
     costosCampanaUSD: costosCampanaUSD,
-    costosCampanaPYG: Math.round(costosCampanaUSD * tasa),
+    costosCampanaPYG: costosCampanaPYG,
     margenBrutoCampanaUSD: Number((ingresosCampanaUSD - costosCampanaUSD).toFixed(2)),
-    margenBrutoCampanaPYG: Math.round((ingresosCampanaUSD - costosCampanaUSD) * tasa)
+    margenBrutoCampanaPYG: ingresosCampanaPYG - costosCampanaPYG
   };
 }
 

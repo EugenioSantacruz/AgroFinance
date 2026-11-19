@@ -23,6 +23,7 @@ import {
   ChequeDiferido,
   CotizacionBimoneda,
   CuentaAgro,
+  MetricasDashboardAgro,
   MovimientoAgro,
   PrestamoAgro,
   PresupuestoRubroAgro,
@@ -206,23 +207,70 @@ export async function gasGet<T>(
 ): Promise<T> {
   const gasUrl = APP_CONFIG.GAS_URL.trim();
   if (gasUrl) {
-    const query = Object.entries({ action, ...params })
-      .map(
-        ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`
-      )
-      .join('&');
-    const sep = gasUrl.includes('?') ? '&' : '?';
+    if (action === 'getCategorias') {
+      const store = await getLocalStore();
+      return (store.categorias && store.categorias.length > 0
+        ? store.categorias
+        : INITIAL_CATEGORIAS) as unknown as T;
+    }
+    if (action === 'getCampanas') {
+      const store = await getLocalStore();
+      return (store.campanas && store.campanas.length > 0
+        ? store.campanas
+        : INITIAL_CAMPANAS) as unknown as T;
+    }
 
-    const res = await fetch(`${gasUrl}${sep}${query}`, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-    });
-    return parseGasHttpResponse<T>(
-      res,
-      'Error en respuesta de Google Apps Script'
-    );
+    try {
+      const query = Object.entries({ action, ...params })
+        .map(
+          ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`
+        )
+        .join('&');
+      const sep = gasUrl.includes('?') ? '&' : '?';
+
+      const res = await fetch(`${gasUrl}${sep}${query}`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      const data = await parseGasHttpResponse<T>(
+        res,
+        'Error en respuesta de Google Apps Script'
+      );
+
+      if (action === 'getMetricasDashboard' && data) {
+        const store = await getLocalStore();
+        const m = data as unknown as MetricasDashboardAgro;
+        const tasa = m.tasaCambioReferencia || 7835;
+        const localMetricas = computeServerMetricas(
+          store.cuentas,
+          store.prestamos,
+          store.cheques,
+          store.movimientos,
+          { ...store.cotizacion, referenciaBCP: tasa },
+          params.campanaId || 'ALL',
+          (params.ambito as AmbitoFiltro) || 'TODOS'
+        );
+        return {
+          ...m,
+          ingresosCampanaPYG: localMetricas.ingresosCampanaPYG,
+          costosCampanaPYG: localMetricas.costosCampanaPYG,
+          ingresosCampanaUSD: localMetricas.ingresosCampanaUSD,
+          costosCampanaUSD: localMetricas.costosCampanaUSD,
+          margenBrutoCampanaPYG: localMetricas.margenBrutoCampanaPYG,
+          margenBrutoCampanaUSD: localMetricas.margenBrutoCampanaUSD,
+        } as unknown as T;
+      }
+
+      return data;
+    } catch (err) {
+      console.warn(
+        `[gasGet] Error con acción "${action}" en Apps Script, aplicando fallback local:`,
+        err
+      );
+      // Fallback a almacenamiento local si Apps Script falla o no responde
+    }
   }
 
   await new Promise((r) => setTimeout(r, 180));

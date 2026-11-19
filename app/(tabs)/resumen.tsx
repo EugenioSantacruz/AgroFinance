@@ -106,7 +106,9 @@ export default function AgendaYCajaScreen() {
                 subtitle={`${ev.fechaVencimiento} (${formatRelativeDueLabel(
                   ev.diasRestantes
                 )}) · ${ev.contraparte}${
-                  ev.entidadBancaria ? ` · ${ev.entidadBancaria}` : ''
+                  ev.entidadBancaria && ev.entidadBancaria !== ev.contraparte
+                    ? ` · ${ev.entidadBancaria}`
+                    : ''
                 }`}
                 amount={ev.monto}
                 currency={ev.moneda}
@@ -246,6 +248,9 @@ export default function AgendaYCajaScreen() {
             )}
           </Text>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <Text style={{ fontSize: 10, fontWeight: '700', color: theme.textMuted, marginBottom: 2 }}>
+            Saldo proyectado:
+          </Text>
           <Money
             amount={pickVal(
               flujo?.proximos7Dias.saldoFinalPYG,
@@ -288,6 +293,9 @@ export default function AgendaYCajaScreen() {
             )}
           </Text>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <Text style={{ fontSize: 10, fontWeight: '700', color: theme.textMuted, marginBottom: 2 }}>
+            Saldo proyectado:
+          </Text>
           <Money
             amount={pickVal(
               flujo?.proximos30Dias.saldoFinalPYG,

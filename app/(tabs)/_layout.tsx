@@ -42,7 +42,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="historial"
         options={{
-          title: 'Libro Diario',
+          title: 'Movimientos',
           tabBarIcon: ({ color, size }) => (
             <Receipt size={size} color={color} />
           ),

@@ -534,10 +534,10 @@ export default function RegistrarMovimientoModal() {
         currency={moneda}
         label={
           mode === 'CUOTAS' && modoImporteCuota === 'CUOTA'
-            ? 'VALOR DE CADA CUOTA'
+            ? 'Valor de cada cuota'
             : mode === 'CUOTAS'
-            ? 'MONTO TOTAL DE LA COMPRA / VENTA'
-            : 'MONTO EN MONEDA NATIVA'
+            ? 'Monto total de la operación'
+            : 'Monto a ingresar'
         }
         onToggleCurrency={() =>
           setMoneda((prev) => (prev === 'USD' ? 'PYG' : 'USD'))
@@ -848,7 +848,7 @@ export default function RegistrarMovimientoModal() {
       ) : null}
 
       {/* Cliente / Proveedor frecuente y detalle */}
-      <SectionHeader title="Cliente / Proveedor (Contraparte)" />
+      <SectionHeader title="A favor de / Proveedor / Cliente" />
       {contrapartesFrecuentes.length > 0 ? (
         <ScrollView
           horizontal

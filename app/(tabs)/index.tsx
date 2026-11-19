@@ -121,7 +121,7 @@ export default function DashboardScreen() {
       heroSecondaryLabel="Equivalente en"
       heroSecondaryAmount={heroSecondary}
       heroSecondaryCurrency={heroSecondaryCurr}
-      exchangeRateBadge={`TC BCP: Gs. ${formatNumberPY(
+      exchangeRateBadge={`Cotización USD: Gs. ${formatNumberPY(
         metricas?.tasaCambioReferencia || 7835
       )}`}
       onRefresh={handleRefresh}
@@ -237,7 +237,7 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.flowCell}>
             <Text style={[styles.flowLabel, { color: theme.textSecondary }]}>
-              SALDO PROY. 30D
+              SALDO ESTIMADO
             </Text>
             <Money
               amount={proj30}
@@ -478,8 +478,16 @@ export default function DashboardScreen() {
                       )}`
                     : `Eq: ${formatMoney(
                         cta.moneda === 'USD'
-                          ? cta.equivalentePYG
-                          : cta.equivalenteUSD,
+                          ? Math.round(
+                              cta.saldoActual *
+                                (metricas?.tasaCambioReferencia || 7835)
+                            )
+                          : Number(
+                              (
+                                cta.saldoActual /
+                                (metricas?.tasaCambioReferencia || 7835)
+                              ).toFixed(2)
+                            ),
                         cta.moneda === 'USD' ? 'PYG' : 'USD',
                         isPrivate
                       )}`

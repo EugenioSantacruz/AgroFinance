@@ -104,7 +104,7 @@ export const SecureFormTemplate: React.FC<SecureFormTemplateProps> = ({
             <Text
               style={[styles.validationTitle, { color: theme.textPrimary }]}
             >
-              RESUMEN DE VALIDACIÓN PREVIA
+              Confirmación del movimiento
             </Text>
           </View>
 

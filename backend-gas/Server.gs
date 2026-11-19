@@ -30,6 +30,12 @@ function doGet(e) {
       case 'getCotizacion':
         payload = getCotizacionVigente();
         break;
+      case 'getCampanas':
+        payload = getCampanasLotes();
+        break;
+      case 'getCategorias':
+        payload = typeof getCategoriasConfig === 'function' ? getCategoriasConfig() : [];
+        break;
       default:
         throw new Error('Acción GET no reconocida: ' + action);
     }

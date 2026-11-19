@@ -70,6 +70,49 @@ export default function HistorialScreen() {
     return matchAmbito && matchMoneda && matchTipo;
   });
 
+  const tasaRef = metricas?.tasaCambioReferencia || 7835;
+
+  const egresosPYG = filtered
+    .filter((m) => isCashOutflow(m.tipo))
+    .reduce(
+      (sum, m) =>
+        sum + (m.moneda === 'PYG' ? m.monto : m.monto * tasaRef),
+      0
+    );
+
+  const egresosUSD = Number(
+    filtered
+      .filter((m) => isCashOutflow(m.tipo))
+      .reduce(
+        (sum, m) =>
+          sum + (m.moneda === 'USD' ? m.monto : m.monto / tasaRef),
+        0
+      )
+      .toFixed(2)
+  );
+
+  const ingresosPYG = filtered
+    .filter((m) => isCashInflow(m.tipo))
+    .reduce(
+      (sum, m) =>
+        sum + (m.moneda === 'PYG' ? m.monto : m.monto * tasaRef),
+      0
+    );
+
+  const ingresosUSD = Number(
+    filtered
+      .filter((m) => isCashInflow(m.tipo))
+      .reduce(
+        (sum, m) =>
+          sum + (m.moneda === 'USD' ? m.monto : m.monto / tasaRef),
+        0
+      )
+      .toFixed(2)
+  );
+
+  const resultadoNetoPYG = ingresosPYG - egresosPYG;
+  const resultadoNetoUSD = Number((ingresosUSD - egresosUSD).toFixed(2));
+
   const handleAnular = async (movId: string) => {
     if (confirmAnularId !== movId) {
       setConfirmAnularId(movId);
@@ -81,22 +124,18 @@ export default function HistorialScreen() {
 
   return (
     <BaseContainerTemplate
-      title="Libro Diario"
-      subtitle="Asientos Bimoneda (Negocio y Personal)"
+      title="Movimientos"
+      subtitle="Historial de ingresos, gastos y transferencias"
       isSyncing={isFetching || anularMutation.isPending}
       isLoadingHero={loadingMetricas}
       heroLabel={`Resultado Neto · ${getAmbitoLabel(activeAmbito)}`}
       heroAmount={
-        displayCurrency === 'USD'
-          ? metricas?.margenBrutoCampanaUSD || 0
-          : metricas?.margenBrutoCampanaPYG || 0
+        displayCurrency === 'USD' ? resultadoNetoUSD : resultadoNetoPYG
       }
       heroCurrency={displayCurrency}
       heroSecondaryLabel="Egresos acumulados:"
       heroSecondaryAmount={
-        displayCurrency === 'USD'
-          ? metricas?.costosCampanaUSD || 0
-          : metricas?.costosCampanaPYG || 0
+        displayCurrency === 'USD' ? egresosUSD : egresosPYG
       }
       heroSecondaryCurrency={displayCurrency}
       onRefresh={refetch}
@@ -252,7 +291,9 @@ export default function HistorialScreen() {
                   isNeutral ? 'default' : isIncome ? 'positive' : 'negative'
                 }
                 secondaryRightText={`Eq ${formatMoney(
-                  m.moneda === 'USD' ? m.montoPYG : m.montoUSD,
+                  m.moneda === 'USD'
+                    ? Math.round(m.monto * tasaRef)
+                    : Number((m.monto / tasaRef).toFixed(2)),
                   m.moneda === 'USD' ? 'PYG' : 'USD',
                   isPrivate
                 )}`}
