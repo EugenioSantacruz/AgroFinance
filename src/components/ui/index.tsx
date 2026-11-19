@@ -14,6 +14,7 @@ import { AmbitoFiltro, AmbitoFinanciero, CurrencyCode } from '../../types/domain
 import { IconBadge } from './IconBadge';
 import { Money } from './Money';
 import { formatNumberPY } from '../../utils/formatters';
+import { SyncStatus } from './SyncStatus';
 import {
   HamsterLoader,
   SkeletonBox,
@@ -25,11 +26,33 @@ import {
 export {
   IconBadge,
   Money,
+  SyncStatus,
   HamsterLoader,
   SkeletonBox,
   SkeletonList,
   SkeletonPillarsGrid,
   SkeletonProgressList,
+};
+
+/** Mensaje de error de validación mostrado debajo de un campo. */
+export const FieldError: React.FC<{ message?: string | null }> = ({
+  message,
+}) => {
+  const { theme } = useTheme();
+  if (!message) return null;
+  return (
+    <Text
+      accessibilityRole="alert"
+      style={{
+        color: theme.danger,
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: -6,
+      }}
+    >
+      {message}
+    </Text>
+  );
 };
 
 export const Card: React.FC<{
@@ -110,6 +133,9 @@ export const AmbitoSwitch: React.FC<{
             key={opt.key}
             onPress={() => onChange(opt.key)}
             activeOpacity={0.82}
+            accessibilityRole="button"
+            accessibilityLabel={opt.label}
+            accessibilityState={{ selected }}
             style={[
               styles.ambitoBtn,
               selected
@@ -169,6 +195,9 @@ export const Chip: React.FC<{
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
       style={[
         styles.chip,
         {
@@ -347,6 +376,9 @@ export const SecureButton: React.FC<{
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
       style={[
         styles.secureButton,
         { backgroundColor: bg, opacity: disabled ? 0.5 : 1 },
@@ -364,21 +396,24 @@ export const AmountInput: React.FC<{
   currency: CurrencyCode;
   onToggleCurrency?: () => void;
   label?: string;
+  error?: string | null;
 }> = ({
   value,
   onChangeText,
   currency,
   onToggleCurrency,
   label = 'Monto a ingresar',
+  error,
 }) => {
   const { theme } = useTheme();
   return (
+    <>
     <View
       style={[
         styles.amountBox,
         {
           backgroundColor: theme.surface,
-          borderColor: theme.borderStrong,
+          borderColor: error ? theme.danger : theme.borderStrong,
         },
       ]}
     >
@@ -389,6 +424,12 @@ export const AmountInput: React.FC<{
         {onToggleCurrency ? (
           <TouchableOpacity
             onPress={onToggleCurrency}
+            accessibilityRole="button"
+            accessibilityLabel={
+              currency === 'USD'
+                ? 'Moneda dólares. Cambiar a guaraníes'
+                : 'Moneda guaraníes. Cambiar a dólares'
+            }
             style={[
               styles.currencySwitch,
               {
@@ -423,6 +464,7 @@ export const AmountInput: React.FC<{
           value={value}
           onChangeText={onChangeText}
           keyboardType="numeric"
+          accessibilityLabel={label}
           placeholder={currency === 'USD' ? '0.00' : '0'}
           placeholderTextColor={theme.textMuted}
           style={[styles.amountInputText, { color: theme.textPrimary }]}
@@ -444,6 +486,8 @@ export const AmountInput: React.FC<{
         </View>
       ) : null}
     </View>
+    <FieldError message={error} />
+    </>
   );
 };
 

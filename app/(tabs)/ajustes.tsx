@@ -29,6 +29,8 @@ export default function AjustesScreen() {
     linkPasskey,
     unlinkPasskey,
     lockApp,
+    deviceRemembered,
+    forgetDevice,
   } = useBiometric();
   const { data: cotizacion, refetch } = useCotizacion();
   const resetMutation = useResetCleanData();
@@ -170,10 +172,22 @@ export default function AjustesScreen() {
           }
           subtitle={
             webAuthnSupported
-              ? 'Sensor biométrico detectado en este dispositivo'
-              : `Acceso protegido mediante PIN maestro`
+? 'Sensor biométrico detectado en este dispositivo'
+              : 'Usá tu PIN de 6 dígitos para desbloquear'
           }
         />
+
+        {deviceRemembered ? (
+          <ListRow
+            icon="Lock"
+            tone="gold"
+            title="Dispositivo recordado"
+            subtitle="No se pide PIN al abrir. Se olvida solo a los 30 días o al bloquear."
+            actionLabel="Olvidar"
+            actionTone="gold"
+            onActionPress={forgetDevice}
+          />
+        ) : null}
 
         {bioFeedback ? (
           <Text style={[styles.feedbackText, { color: theme.primary }]}>

@@ -6,7 +6,7 @@ import {
   Text,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Fingerprint, Lock, ShieldCheck, Delete } from 'lucide-react-native';
+import { Fingerprint, Lock, ShieldCheck, Delete, Check } from 'lucide-react-native';
 import { APP_CONFIG } from '../constants/config';
 import { useTheme } from './ThemeContext';
 import {
@@ -15,12 +15,17 @@ import {
   verifyBiometricPasskey,
 } from '../utils/biometrics';
 
+/** Días que se recuerda un dispositivo tras desbloquear con "Recordar este dispositivo". */
+const REMEMBER_DAYS = 30;
+
 interface BiometricContextValue {
   isLocked: boolean;
   pinEnabled: boolean;
   hasPasskeyLinked: boolean;
   webAuthnSupported: boolean;
+  deviceRemembered: boolean;
   lockApp: () => void;
+  forgetDevice: () => void;
   setPinEnabled: (enabled: boolean) => void;
   linkPasskey: () => Promise<{ ok: boolean; error?: string }>;
   unlinkPasskey: () => Promise<void>;
@@ -31,7 +36,9 @@ const BiometricContext = createContext<BiometricContextValue>({
   pinEnabled: true,
   hasPasskeyLinked: false,
   webAuthnSupported: false,
+  deviceRemembered: false,
   lockApp: () => {},
+  forgetDevice: () => {},
   setPinEnabled: () => {},
   linkPasskey: async () => ({ ok: false }),
   unlinkPasskey: async () => {},
@@ -48,6 +55,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [hasPasskeyLinked, setHasPasskeyLinked] = useState(false);
   const [webAuthnSupported, setWebAuthnSupported] = useState(false);
+  const [rememberChoice, setRememberChoice] = useState(false);
+  const [deviceRemembered, setDeviceRemembered] = useState(false);
 
   useEffect(() => {
     isWebAuthnAvailable().then(setWebAuthnSupported);
@@ -56,13 +65,38 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
         setHasPasskeyLinked(Boolean(cred));
       }
     );
-    AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.PIN_ENABLED).then((val) => {
+    Promise.all([
+      AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.PIN_ENABLED),
+      AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.REMEMBER_DEVICE_UNTIL),
+    ]).then(([val, rememberUntil]) => {
       const enabled = val !== 'false';
+      const remembered =
+        Boolean(rememberUntil) && Date.now() < Number(rememberUntil);
+      if (rememberUntil && !remembered) {
+        AsyncStorage.removeItem(APP_CONFIG.STORAGE_KEYS.REMEMBER_DEVICE_UNTIL);
+      }
+      setDeviceRemembered(remembered);
       setPinEnabledState(enabled);
-      setIsLocked(enabled);
+      setIsLocked(enabled && !remembered);
       setReady(true);
     });
   }, []);
+
+  const rememberDeviceIfChosen = () => {
+    if (!rememberChoice) return;
+    const until = Date.now() + REMEMBER_DAYS * 24 * 60 * 60 * 1000;
+    AsyncStorage.setItem(
+      APP_CONFIG.STORAGE_KEYS.REMEMBER_DEVICE_UNTIL,
+      String(until)
+    );
+    setDeviceRemembered(true);
+  };
+
+  const forgetDevice = () => {
+    AsyncStorage.removeItem(APP_CONFIG.STORAGE_KEYS.REMEMBER_DEVICE_UNTIL);
+    setDeviceRemembered(false);
+    setRememberChoice(false);
+  };
 
   const setPinEnabled = (enabled: boolean) => {
     setPinEnabledState(enabled);
@@ -81,10 +115,11 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
 
     if (nextPin.length === 6) {
       if (nextPin === APP_CONFIG.MASTER_PIN) {
+        rememberDeviceIfChosen();
         setPinInput('');
         setIsLocked(false);
       } else {
-        setErrorMsg(`PIN Maestro incorrecto. Intente nuevamente (${APP_CONFIG.MASTER_PIN}).`);
+        setErrorMsg('PIN incorrecto. Intente nuevamente.');
         setTimeout(() => setPinInput(''), 320);
       }
     }
@@ -99,6 +134,7 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
     setErrorMsg(null);
     const res = await verifyBiometricPasskey();
     if (res.ok) {
+      rememberDeviceIfChosen();
       setPinInput('');
       setIsLocked(false);
     } else {
@@ -123,7 +159,9 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
     setHasPasskeyLinked(false);
   };
 
+  // Bloqueo manual: también olvida el dispositivo, así la próxima vez pide PIN.
   const lockApp = () => {
+    forgetDevice();
     setPinInput('');
     setErrorMsg(null);
     setIsLocked(true);
@@ -170,9 +208,30 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
             <Text style={styles.errorText}>{errorMsg}</Text>
           ) : (
             <Text style={styles.hintText}>
-              Ingrese PIN Maestro de 6 dígitos (Demo: {APP_CONFIG.MASTER_PIN})
+              Ingrese su PIN de 6 dígitos
             </Text>
           )}
+
+          <TouchableOpacity
+            onPress={() => setRememberChoice((v) => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: rememberChoice }}
+            accessibilityLabel={`Recordar este dispositivo por ${REMEMBER_DAYS} días`}
+            style={styles.rememberRow}
+            activeOpacity={0.8}
+          >
+            <View
+              style={[
+                styles.checkBox,
+                rememberChoice ? styles.checkBoxOn : null,
+              ]}
+            >
+              {rememberChoice ? <Check size={13} color="#052E23" /> : null}
+            </View>
+            <Text style={styles.rememberText}>
+              Recordar este dispositivo ({REMEMBER_DAYS} días)
+            </Text>
+          </TouchableOpacity>
 
           <View style={styles.keypadGrid}>
             {digits.map((d) => (
@@ -180,6 +239,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
                 key={d}
                 style={styles.keyButton}
                 onPress={() => handleDigitPress(d)}
+                accessibilityRole="button"
+                accessibilityLabel={`Dígito ${d}`}
                 activeOpacity={0.75}
               >
                 <Text style={styles.keyText}>{d}</Text>
@@ -191,6 +252,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
                 styles.keyButton,
                 hasPasskeyLinked ? styles.keyButtonBio : null,
               ]}
+              accessibilityRole="button"
+              accessibilityLabel="Desbloquear con huella o Face ID"
               onPress={
                 hasPasskeyLinked
                   ? handleFaceIdUnlock
@@ -210,6 +273,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
             <TouchableOpacity
               style={styles.keyButton}
               onPress={() => handleDigitPress('0')}
+              accessibilityRole="button"
+              accessibilityLabel="Dígito 0"
               activeOpacity={0.75}
             >
               <Text style={styles.keyText}>0</Text>
@@ -218,6 +283,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
             <TouchableOpacity
               style={styles.keyButton}
               onPress={handleBackspace}
+              accessibilityRole="button"
+              accessibilityLabel="Borrar último dígito"
               activeOpacity={0.75}
             >
               <Delete size={22} color="#E2E8F0" />
@@ -242,7 +309,9 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
         pinEnabled,
         hasPasskeyLinked,
         webAuthnSupported,
+        deviceRemembered,
         lockApp,
+        forgetDevice,
         setPinEnabled,
         linkPasskey,
         unlinkPasskey,
@@ -256,6 +325,31 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({
 export const useBiometric = () => useContext(BiometricContext);
 
 const styles = StyleSheet.create({
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 20,
+    paddingVertical: 6,
+  },
+  checkBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#6EE7B7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkBoxOn: {
+    backgroundColor: '#34D399',
+    borderColor: '#34D399',
+  },
+  rememberText: {
+    color: '#D1FAE5',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   lockScreen: {
     flex: 1,
     justifyContent: 'center',
